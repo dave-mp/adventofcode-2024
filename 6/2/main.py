@@ -10,6 +10,10 @@ VISITED_HORIZONTAL = "-"
 VISITED_CORNER = "+"
 
 
+class LoopReachedException(Exception):
+    pass
+
+
 def current_position(map_):
     for i, line in enumerate(map_):
         for j, char in enumerate(line):
@@ -18,107 +22,99 @@ def current_position(map_):
     return None
 
 
-def next_state(map_, current_position, looping_obstacles, previous_value):
+def next_state(
+    current_map,
+    current_position,
+    previous_value,
+    position_orientation=None,
+    seen_obstacles=None,
+):
     (i, j) = current_position
-    orientation = map_[i][j]
+    new_map = current_map[:]
+    orientation = position_orientation if position_orientation else new_map[i][j]
     next_position = None
     next_orientation = None
-    new_map = map_[:]
-    potential_obstacles = looping_obstacles[:]
 
     if orientation == UP:
         if (i - 1) >= 0:
-            if map_[i - 1][j] == OBSTACLE and (j + 1) < len(map_[i]):
-                next_position = (i, j + 1)
-                next_orientation = RIGHT
+            if new_map[i - 1][j] == OBSTACLE:
+                if seen_obstacles is not None:
+                    if ((i - 1, j), orientation) in seen_obstacles:
+                        raise LoopReachedException
+                    else:
+                        seen_obstacles.append(((i - 1, j), orientation))
+
+                if (j + 1) < len(new_map[i]):
+                    return next_state(
+                        new_map,
+                        current_position,
+                        VISITED_VERTICAL,
+                        RIGHT,
+                        seen_obstacles,
+                    )
             else:
                 next_position = (i - 1, j)
                 next_orientation = UP
-
-            if (
-                next_orientation == UP
-                and (j + 1) < len(map_[i])
-                and map_[i][j + 1] in [VISITED_HORIZONTAL, VISITED_CORNER, OBSTACLE]
-                # and (i - 1, j) not in potential_obstacles
-            ):
-                potential_obstacles.append((i - 1, j))
-            elif (
-                next_orientation == RIGHT
-                and (j + 2) < len(map_[i])
-                and map_[i + 1][j + 1] in [VISITED_VERTICAL, VISITED_CORNER, OBSTACLE]
-                # and (i, j + 2) not in potential_obstacles
-            ):
-                potential_obstacles.append((i, j + 2))
     elif orientation == RIGHT:
-        if (j + 1) < len(map_[i]):
-            if map_[i][j + 1] == OBSTACLE and (i + 1) < len(map_):
-                next_position = (i + 1, j)
-                next_orientation = DOWN
+        if (j + 1) < len(new_map[i]):
+            if new_map[i][j + 1] == OBSTACLE:
+                if seen_obstacles is not None:
+                    if ((i, j + 1), orientation) in seen_obstacles:
+                        raise LoopReachedException
+                    else:
+                        seen_obstacles.append(((i, j + 1), orientation))
+
+                if (i + 1) < len(new_map):
+                    return next_state(
+                        new_map,
+                        current_position,
+                        VISITED_HORIZONTAL,
+                        DOWN,
+                        seen_obstacles,
+                    )
             else:
                 next_position = (i, j + 1)
                 next_orientation = RIGHT
-
-            if (
-                next_orientation == RIGHT
-                and (i + 1) < len(map_)
-                and map_[i + 1][j] in [VISITED_VERTICAL, VISITED_CORNER, OBSTACLE]
-                # and (i + 1, j) not in potential_obstacles
-            ):
-                potential_obstacles.append((i + 1, j))
-            elif (
-                next_orientation == DOWN
-                and (i + 2) < len(map_)
-                and map_[i + 1][j - 1] in [VISITED_HORIZONTAL, VISITED_CORNER, OBSTACLE]
-                # and (i + 2, j) not in potential_obstacles
-            ):
-                potential_obstacles.append((i + 2, j))
-
     elif orientation == DOWN:
-        if (i + 1) < len(map_):
-            if map_[i + 1][j] == OBSTACLE and (j - 1) >= 0:
-                next_position = (i, j - 1)
-                next_orientation = LEFT
+        if (i + 1) < len(new_map):
+            if new_map[i + 1][j] == OBSTACLE:
+                if seen_obstacles is not None:
+                    if ((i + 1, j), orientation) in seen_obstacles:
+                        raise LoopReachedException
+                    else:
+                        seen_obstacles.append(((i + 1, j), orientation))
+
+                if (j - 1) >= 0:
+                    return next_state(
+                        new_map,
+                        current_position,
+                        VISITED_VERTICAL,
+                        LEFT,
+                        seen_obstacles,
+                    )
             else:
                 next_position = (i + 1, j)
                 next_orientation = DOWN
-
-            if (
-                next_orientation == DOWN
-                and (j - 1) >= 0
-                and map_[i][j - 1] in [VISITED_HORIZONTAL, VISITED_CORNER, OBSTACLE]
-                # and (i, j - 1) not in potential_obstacles
-            ):
-                potential_obstacles.append((i, j - 1))
-            elif (
-                next_orientation == LEFT
-                and (j - 2) >= 0
-                and map_[i - 1][j - 1] in [VISITED_VERTICAL, VISITED_CORNER, OBSTACLE]
-                # and (i, j - 2) not in potential_obstacles
-            ):
-                potential_obstacles.append((i, j - 2))
     elif orientation == LEFT:
         if (j - 1) >= 0:
-            if map_[i][j - 1] == OBSTACLE and (i - 1) >= 0:
-                next_position = (i - 1, j)
-                next_orientation = UP
+            if new_map[i][j - 1] == OBSTACLE:
+                if seen_obstacles is not None:
+                    if ((i, j - 1), orientation) in seen_obstacles:
+                        raise LoopReachedException
+                    else:
+                        seen_obstacles.append(((i, j - 1), orientation))
+
+                if (i - 1) >= 0:
+                    return next_state(
+                        new_map,
+                        current_position,
+                        VISITED_HORIZONTAL,
+                        UP,
+                        seen_obstacles,
+                    )
             else:
                 next_position = (i, j - 1)
                 next_orientation = LEFT
-
-            if (
-                next_orientation == LEFT
-                and (i - 1) >= 0
-                and map_[i - 1][j] in [VISITED_VERTICAL, VISITED_CORNER, OBSTACLE]
-                # and (i - 1, j) not in potential_obstacles
-            ):
-                potential_obstacles.append((i - 1, j))
-            elif (
-                next_orientation == UP
-                and (i - 2) >= 0
-                and map_[i - 1][j + 1] in [VISITED_HORIZONTAL, VISITED_CORNER, OBSTACLE]
-                # and (i - 2, j) not in potential_obstacles
-            ):
-                potential_obstacles.append((i - 2, j))
 
     if previous_value == NOT_VISITED:
         if orientation == next_orientation:
@@ -150,36 +146,88 @@ def next_state(map_, current_position, looping_obstacles, previous_value):
         previous_value = new_map[n][m]
         new_map[n][m] = next_orientation
 
-    return (new_map, next_position, potential_obstacles, previous_value)
+    return (
+        new_map,
+        next_position,
+        previous_value,
+    )
 
 
 def print_map(map_):
-    print("\n".join(["".join(line) for line in map_]))
+    print("\n".join(["".join(line) for line in map_]), end="\n\n")
 
 
-def count_visited(map_):
-    c = 0
-    for line in map_:
-        for position in line:
-            if position in [VISITED_CORNER, VISITED_HORIZONTAL, VISITED_VERTICAL]:
-                c += 1
-    return c
+def get_visited(map_):
+    visited_positions = []
+    for i, line in enumerate(map_):
+        for j, cell in enumerate(line):
+            position = (i, j)
+            if (
+                cell in [VISITED_CORNER, VISITED_HORIZONTAL, VISITED_VERTICAL]
+                and position not in visited_positions
+            ):
+                visited_positions.append(position)
+    return visited_positions
 
 
-it = 0
-with open("input.txt", "r") as f:
-    map_ = [list(line.strip()) for line in f.readlines()]
+def check_loop(new_map, step):
+    try:
+        map_ = new_map[:]
+
+        map_[step[0]][step[1]] = OBSTACLE
+
+        position = current_position(map_)
+        previous_value = NOT_VISITED
+        seen_obstacles = []
+
+        while position:
+            try:
+                (map_, position, previous_value) = next_state(
+                    map_, position, previous_value, seen_obstacles=seen_obstacles
+                )
+            except LoopReachedException:
+                # print_map(map_)
+                return True
+
+            seen_obstacles_set = set(seen_obstacles)
+            if len(seen_obstacles_set) != len(seen_obstacles):
+                return True
+
+    except IndexError:
+        return False
+
+    return False
+
+
+def draw_path(map_):
+    it = 0
     position = current_position(map_)
     print_map(map_)
-    looping_obstacles = []
     previous_value = NOT_VISITED
 
     while position:
-        (map_, position, looping_obstacles, previous_value) = next_state(
-            map_, position, looping_obstacles, previous_value
-        )
+        (map_, position, previous_value) = next_state(map_, position, previous_value)
         it += 1
 
-    print(f"\nITERATION {it} RESULT:", position)
-    print_map(map_)
-    print(count_visited(map_), len(looping_obstacles))
+    # print(f"\nITERATION {it} RESULT:", position)
+    # print_map(map_)
+
+    return map_
+
+
+with open("input.txt", "r") as f:
+    drawn_map = draw_path([list(line.strip()) for line in f.readlines()])
+    path = get_visited(drawn_map)
+    print("VISITED POSITIONS: ", len(path))
+
+    loop_positions = []
+
+    for step in path[:]:
+        if step not in loop_positions:
+            with open("input.txt", "r") as f2:
+                original_map = [list(line.strip()) for line in f2.readlines()]
+                causes_loop = check_loop(original_map, step)
+                if causes_loop and step not in loop_positions:
+                    loop_positions.append(step)
+
+    print("LOOP CAUSING POSITIONS: ", len(loop_positions))
